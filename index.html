@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learn Vocabulary</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+
+        }
+
+        #content-container {
+            display: flex;
+        }
+
+        .word-container {
+            flex: 3;
+            padding: 20px;
+
+        }
+
+        #word-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .sidebar {
+            flex: 1;
+            border-left: 1px solid #ddd;
+            padding: 10px;
+            height: 100vh;
+            overflow-y: auto;
+            background: #fff;
+        }
+
+        .word-card {
+            border: 2px solid #ddd;
+            padding: 15px;
+            margin: 10px auto;
+            background: #ffffff;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .pagination button,
+        .test-controls button {
+            margin: 5px;
+            padding: 10px 15px;
+            border: none;
+            background: #007BFF;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .pagination button:hover,
+        .test-controls button:hover {
+            background: #0056b3;
+        }
+
+        .result {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .pages {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .result {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .page-item {
+            cursor: pointer;
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            background: #007BFF;
+            color: white;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .page-item:hover {
+            background: #0056b3;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            width: 80%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+
+        button {
+            margin: 5px;
+            padding: 8px;
+            border: none;
+            background: #28a745;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background: #218838;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            width: 80%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+
+        .test-container {
+            display: none;
+        }
+
+        #test-questions {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .test-card {
+            padding: 10px;
+            border: 1px solid #d5d4d4;
+            border-radius: 10px;
+            background: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-container">
+        <h1>Vocabulary Learning</h1>
+        <button onclick="startTest()">Bắt đầu bài thi</button>
+        <div id="content-container">
+            <div class="word-container">
+                <div id="word-container"></div>
+                <div class="pagination">
+                    <button onclick="prevPage()">Previous</button>
+                    <span id="page-info"></span>
+                    <button onclick="nextPage()">Next</button>
+                </div>
+            </div>
+            <div class="sidebar" id="pagination-sidebar"></div>
+
+        </div>
+
+        <div class="test-container" id="test-container">
+            <h2>Bài Thi</h2>
+            <div id="test-questions"></div>
+            <button onclick="submitTest()">Nộp bài</button>
+            <button onclick="exitTest()">Thoát</button>
+            <div id="test-results"></div>
+        </div>
+    </div>
+
+    <script>
+        let words = [];
+        let currentPage = 1;
+        const wordsPerPage = 20;
+
+        fetch('words.txt')
+            .then(response => response.text())
+            .then(text => {
+                words = text.split('\n')
+                    .map(line => line.trim())  // Loại bỏ khoảng trắng thừa
+                    .filter(line => line)  // Bỏ qua dòng trống
+                    .map(line => {
+                        const parts = line.split(/\t+/);  // Chia bằng một hoặc nhiều tab
+                        if (parts.length < 3) return null;  // Bỏ qua dòng không hợp lệ
+                        return {
+                            word: parts[0].split(" ")[0],
+                            type: parts[0].split(" ")[1],
+                            pronunciation: parts[1]?.trim() || "",
+                            meaning: parts.slice(2).join(' ').trim()
+                        };
+                    }).filter(item => item); // Lọc bỏ giá trị null
+                displayWords();
+                generatePagination();
+
+            })
+            .catch(error => console.error("Lỗi khi đọc file words.txt:", error));
+
+
+        function displayWords() {
+            document.getElementById("content-container").style.display = "flex";
+            document.getElementById("test-container").style.display = "none";
+            const container = document.getElementById("word-container");
+            container.innerHTML = "";
+            const start = (currentPage - 1) * wordsPerPage;
+            const end = start + wordsPerPage;
+            words.slice(start, end).forEach(wordObj => {
+                const card = document.createElement("div");
+                card.className = "word-card";
+                card.innerHTML = `<h3>${wordObj.word} ${wordObj.type}</h3>
+                                  <p><i>${wordObj.pronunciation}</i></p>
+                                  <input type="text" placeholder="Nhập nghĩa của từ" id="input-${wordObj.word}">
+                                  <button onclick="checkMeaning('${wordObj.word}', '${wordObj.meaning}')">Check</button>
+                                  <button onclick="showMeaning('${wordObj.word}', '${wordObj.meaning}')">Hiện nghĩa</button>
+                                  <button onclick="speak('${wordObj.word}')">🔊</button>
+                                  <p class="result" id="result-${wordObj.word}"></p>`;
+                container.appendChild(card);
+            });
+            document.getElementById("page-info").innerText = `Page ${currentPage} of ${Math.ceil(words.length / wordsPerPage)}`;
+        }
+
+        function speak(word) {
+            let utterance = new SpeechSynthesisUtterance(word);
+            speechSynthesis.speak(utterance);
+        }
+
+        function checkMeaning(word, correctMeaning) {
+            const inputField = document.getElementById(`input-${word}`);
+            const resultField = document.getElementById(`result-${word}`);
+            const userAnswer = inputField.value.trim().toLowerCase();
+            const correct = correctMeaning.trim().toLowerCase();
+
+            if (userAnswer === correct || correct.includes(userAnswer)) {
+                resultField.innerText = "✅ Đúng!";
+                resultField.style.color = "green";
+            } else {
+                resultField.innerText = `❌ Sai! Đáp án: ${correctMeaning}`;
+                resultField.style.color = "red";
+            }
+        }
+
+        function showMeaning(word, meaning) {
+            const resultField = document.getElementById(`result-${word}`);
+            resultField.innerText = `💡 Nghĩa: ${meaning}`;
+            resultField.style.color = "blue";
+        }
+
+        function nextPage() {
+            if (currentPage * wordsPerPage < words.length) {
+                currentPage++;
+                displayWords();
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayWords();
+            }
+        }
+
+        function generatePagination() {
+            const sidebar = document.getElementById("pagination-sidebar");
+            sidebar.innerHTML = "<h3>Chọn trang</h3>";
+            const totalPages = Math.ceil(words.length / wordsPerPage);
+            let pages = document.createElement("div");
+            pages.className = "pages";
+            for (let i = 1; i <= totalPages; i++) {
+                let pageItem = document.createElement("div");
+                pageItem.className = "page-item";
+                pageItem.innerText = `Trang ${i}`;
+                pageItem.onclick = () => {
+                    currentPage = i;
+                    displayWords();
+                };
+                pages.appendChild(pageItem);
+            }
+            sidebar.appendChild(pages);
+        }
+        function startTest() {
+            document.getElementById("content-container").style.display = "none";
+            document.getElementById("test-container").style.display = "block";
+            testWords = words.sort(() => 0.5 - Math.random()).slice(0, 30);
+            const testContainer = document.getElementById("test-questions");
+            testContainer.innerHTML = "";
+            testWords.forEach(wordObj => {
+                const card = document.createElement("div");
+                card.className = "test-card";
+                card.innerHTML = `<h3>${wordObj.word}</h3>
+                                  <input type="text" placeholder="Nhập nghĩa của từ" id="test-${wordObj.word}">
+                                  <p class="result" id="test-result-${wordObj.word}"></p>`;
+                testContainer.appendChild(card);
+            });
+        }
+
+        function submitTest() {
+            let score = 0;
+            testWords.forEach(wordObj => {
+                const inputField = document.getElementById(`test-${wordObj.word}`);
+                const resultField = document.getElementById(`test-result-${wordObj.word}`);
+                const userAnswer = inputField.value.trim().toLowerCase();
+                const correct = wordObj.meaning.trim().toLowerCase();
+                if (userAnswer != '' && (userAnswer === correct || correct.includes(userAnswer))) {
+                    resultField.innerText = `✅ Đúng! Đáp án: ${wordObj.meaning}`;
+                    resultField.style.color = "green";
+                    score++;
+                } else {
+                    resultField.innerText = `❌ Sai! Đáp án: ${wordObj.meaning}`;
+                    resultField.style.color = "red";
+                }
+            });
+            document.getElementById("test-results").innerHTML = `<h3>Điểm của bạn: ${score} / ${testWords.length}</h3>`;
+        }
+
+        function exitTest() {
+            displayWords();
+        }
+    </script>
+</body>
+
+</html>
