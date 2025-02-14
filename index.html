@@ -158,6 +158,7 @@
                     <button onclick="prevPage()">Previous</button>
                     <span id="page-info"></span>
                     <button onclick="nextPage()">Next</button>
+                    <button onclick="startPageTest()">Kiểm tra từ trong trang này</button>
                 </div>
             </div>
             <div class="sidebar" id="pagination-sidebar"></div>
@@ -176,7 +177,7 @@
     <script>
         let words = [];
         let currentPage = 1;
-        const wordsPerPage = 20;
+        const wordsPerPage = 25;
 
         fetch('words.txt')
             .then(response => response.text())
@@ -185,15 +186,18 @@
                     .map(line => line.trim())  // Loại bỏ khoảng trắng thừa
                     .filter(line => line)  // Bỏ qua dòng trống
                     .map(line => {
-                        const parts = line.split(/\t+/);  // Chia bằng một hoặc nhiều tab
-                        if (parts.length < 3) return null;  // Bỏ qua dòng không hợp lệ
+                        const parts = line.split(' ');  // Chia bằng một hoặc nhiều tab
+                        const match = line.split('\t')[0].match(/\((.*?)\)/);
+                        const wordType = match ? match[1] : '';
+                        console.log(parts)
                         return {
                             word: parts[0].split(" ")[0],
-                            type: parts[0].split(" ")[1],
-                            pronunciation: parts[1]?.trim() || "",
-                            meaning: parts.slice(2).join(' ').trim()
+                            type: `(${wordType})`,
+                            pronunciation: parts[2]?.trim() || "",
+                            meaning: parts.slice(3).join(' ').trim()
                         };
                     }).filter(item => item); // Lọc bỏ giá trị null
+                console.log(words)
                 displayWords();
                 generatePagination();
 
@@ -319,9 +323,25 @@
         function exitTest() {
             displayWords();
         }
+        function startPageTest() {
+            document.getElementById("content-container").style.display = "none";
+            document.getElementById("test-container").style.display = "block";
+            const start = (currentPage - 1) * wordsPerPage;
+            const end = start + wordsPerPage;
+            testWords = words.slice(start, end);
+            const testContainer = document.getElementById("test-questions");
+            testContainer.innerHTML = "";
+            testWords.forEach(wordObj => {
+                const card = document.createElement("div");
+                card.className = "test-card";
+                card.innerHTML = `<h3>${wordObj.word}</h3>
+                                  <input type="text" placeholder="Nhập nghĩa của từ" id="test-${wordObj.word}">
+                                  <p class="result" id="test-result-${wordObj.word}"></p>`;
+                testContainer.appendChild(card);
+            });
+        }
     </script>
 
-    <script src="./test.js"></script>
 </body>
 
 </html>
