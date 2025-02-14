@@ -144,6 +144,16 @@
             border-radius: 10px;
             background: #fff;
         }
+
+        .listening {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0.5;
+            }
+        }
     </style>
 </head>
 
@@ -196,7 +206,7 @@
                             word: parts[0].split(" ")[0],
                             type: `(${wordType})`,
                             pronunciation: pronunciation,
-                            meaning: parts.slice(3).join(' ').trim()
+                            meaning: parts.slice(3).join(' ').trim(),
                         };
                     }).filter(item => item); // Lọc bỏ giá trị null
                 displayWords();
@@ -222,6 +232,7 @@
                                   <button onclick="checkMeaning('${wordObj.word}', '${wordObj.meaning}')">Check</button>
                                   <button onclick="showMeaning('${wordObj.word}', '${wordObj.meaning}')">Hiện nghĩa</button>
                                   <button onclick="speak('${wordObj.word}')">🔊</button>
+                                  <button id="listen-btn-${wordObj.word}" onclick="startRecognition('${wordObj.word}')">🎤 Kiểm tra phát âm</button>
                                   <p class="result" id="result-${wordObj.word}"></p>`;
                 container.appendChild(card);
             });
@@ -341,6 +352,30 @@
                 testContainer.appendChild(card);
             });
         }
+
+        function startRecognition(word) {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            const button = document.getElementById(`listen-btn-${word}`);
+            button.classList.add("listening");
+            recognition.start();
+
+            recognition.onresult = function (event) {
+                button.classList.remove("listening");
+
+                const userSpeech = event.results[0][0].transcript;
+                const resultElement = document.getElementById(`result-${word}`);
+
+                if (userSpeech.toLowerCase() === word.toLowerCase()) {
+                    resultElement.innerHTML = `✅ Chính xác! Bạn đã phát âm đúng: ${userSpeech}`;
+                    resultElement.style.color = "green";
+                } else {
+                    resultElement.innerHTML = `❌ Sai! Bạn nói: ${userSpeech}, đúng là: ${word}`;
+                    resultElement.style.color = "red";
+                }
+            };
+        }
+
     </script>
 
 </body>
